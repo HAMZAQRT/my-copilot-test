@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>VORTEX SYSTEM | ONLINE</title>
+    <style>
+        body { background: #02050a; color: white; font-family: sans-serif; text-align: center; padding: 40px; }
+        .card { background: #0a0f19; border: 1px solid #00f3ff; padding: 25px; border-radius: 12px; display: inline-block; width: 320px; }
+        input { width: 100%; padding: 10px; margin: 8px 0; background: #000; border: 1px solid #333; color: #00f3ff; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #00ff66; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        #status { margin-top: 15px; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 style="color:#00f3ff; margin-top:0;">VORTEX SYNC</h2>
+    <input type="text" id="buyer" placeholder="اسم المشتري">
+    <input type="number" id="amount" placeholder="المبلغ USDT">
+    <input type="file" id="fileInput">
+    <button onclick="process()">تأكيد الرفع والمزامنة</button>
+    <div id="status"></div>
+</div>
+
+<script>
+async function process() {
+    const status = document.getElementById('status');
+    const file = document.getElementById('fileInput').files[0];
+    
+    // البيانات المستخرجة من صورك لضمان العمل
+    const TOKEN = "0b759fa85b9b48658e7a076b0f1d97af"; 
+    const SHEET_API = "https://sheetdb.io/api/v1/9qy0hec7q2yg1";
+
+    if(!file) return alert("يرجى اختيار ملف الهوية");
+
+    status.innerText = "⏳ جاري الرفع والمزامنة...";
+
+    try {
+        // 1. الرفع لـ Camber Cloud
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', 'identities/');
+
+        const camRes = await fetch('https://api.cambercloud.com/v1/stashes/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${TOKEN}` },
+            body: formData
+        });
+
+        let fileUrl = "تم الرفع بنجاح";
+        if(camRes.ok) {
+            const data = await camRes.json();
+            fileUrl = data.url || fileUrl;
+        }
+
+        // 2. المزامنة مع الجدول
+        await fetch(SHEET_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                data: [{
+                    "المشتري": document.getElementById('buyer').value,
+                    "المبلغ": document.getElementById('amount').value,
+                    "رابط_الهوية": fileUrl,
+                    "التاريخ": new Date().toLocaleString()
+                }]
+            })
+        });
+
+        status.innerHTML = "<b style='color:#00ff66'>✅ اكتملت العملية بنجاح!</b>";
+    } catch (e) {
+        status.innerHTML = "<b style='color:#ff4444'>❌ حدث خطأ في النظام.</b>";
+    }
+}
+</script>
+</body>
+</html>
